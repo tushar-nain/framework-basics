@@ -14,6 +14,7 @@ class Calculator
      */
     protected static array $macros = [];
 
+
     // ─────────────────────────────────────────────────────────────
     // SECTION: Macro Registration
     // ─────────────────────────────────────────────────────────────
@@ -27,57 +28,40 @@ class Calculator
      */
     public static function macro(string $name, Closure $callback): void
     {
-        self::$macros[$name] = $callback;
+        static::$macros[$name] = $callback;
     }
 
+    /**
+     * Determine if a macro is registered.
+     *
+     * @param string $name
+     * @return bool
+     */
+    public static function hasMacro(string $name): bool
+    {
+        return isset(static::$macros[$name]);
+    }
+
+    
     // ─────────────────────────────────────────────────────────────
     // SECTION: Core Arithmetic Methods
     // ─────────────────────────────────────────────────────────────
 
-    /**
-     * Add two integers.
-     *
-     * @param int $num1
-     * @param int $num2
-     * @return int
-     */
     public function sum(int $num1, int $num2): int
     {
         return $num1 + $num2;
     }
 
-    /**
-     * Subtract two integers.
-     *
-     * @param int $num1
-     * @param int $num2
-     * @return int
-     */
     public function subtract(int $num1, int $num2): int
     {
         return $num1 - $num2;
     }
 
-    /**
-     * Multiply two integers.
-     *
-     * @param int $num1
-     * @param int $num2
-     * @return int
-     */
     public function multiply(int $num1, int $num2): int
     {
         return $num1 * $num2;
     }
 
-    /**
-     * Divide two integers and return a float.
-     *
-     * @param int $num1
-     * @param int $num2
-     * @return float
-     * @throws InvalidArgumentException
-     */
     public function divide(int $num1, int $num2): float
     {
         if ($num2 === 0) {
@@ -87,12 +71,13 @@ class Calculator
         return $num1 / $num2;
     }
 
+
     // ─────────────────────────────────────────────────────────────
-    // SECTION: Macro Handling via Magic Call
+    // SECTION: Macro Handling via Magic Calls
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Handle calls to undefined methods via registered macros.
+     * Handle calls to undefined instance methods via registered macros.
      *
      * @param string $method
      * @param array $args
@@ -101,14 +86,31 @@ class Calculator
      */
     public function __call($method, $args)
     {
-        if (isset(self::$macros[$method])) {
-            // Binds macro to current instance for $this support
-            return self::$macros[$method]->call($this, ...$args);
+        if (static::hasMacro($method)) {
+            return static::$macros[$method]->call($this, ...$args);
         }
 
         throw new BadMethodCallException("Method [$method] does not exist.");
     }
+
+    /**
+     * Handle calls to undefined static methods via registered macros.
+     *
+     * @param string $method
+     * @param array $args
+     * @return mixed
+     * @throws BadMethodCallException
+     */
+    public static function __callStatic($method, $args)
+    {
+        if (static::hasMacro($method)) {
+            return static::$macros[$method](...$args);
+        }
+
+        throw new BadMethodCallException("Static method [$method] does not exist.");
+    }
 }
+
 
 
 
@@ -116,18 +118,10 @@ class Calculator
 // SECTION: Macro Definitions
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Macro: power
- * Description: Raise base to the exponent power.
- */
 Calculator::macro('power', function(int $base, int $exponent): int {
     return $base ** $exponent;
 });
 
-/**
- * Macro: average
- * Description: Calculates the average of any number of integers.
- */
 Calculator::macro('average', function(int ...$numbers): float {
     $count = count($numbers);
 
@@ -138,11 +132,6 @@ Calculator::macro('average', function(int ...$numbers): float {
     return array_sum($numbers) / $count;
 });
 
-/**
- * Macro: factorial
- * Description: Calculates factorial recursively.
- * Supports positive integers only.
- */
 Calculator::macro('factorial', function(int $n): int {
     if ($n < 0) {
         throw new InvalidArgumentException("Factorial is not defined for negative numbers.");
@@ -152,6 +141,8 @@ Calculator::macro('factorial', function(int $n): int {
 });
 
 
+
+
 // ─────────────────────────────────────────────────────────────
 // SECTION: Usage Example
 // ─────────────────────────────────────────────────────────────
@@ -159,13 +150,16 @@ Calculator::macro('factorial', function(int $n): int {
 $calculator = new Calculator;
 
 try {
-    
-    $result = $calculator->power(2, 4); // Should return 16
-    echo 'The result is ' . $result . PHP_EOL;
 
-    echo 'Average: ' . $calculator->average(10, 20, 30) . PHP_EOL;
-    echo 'Factorial of 5: ' . $calculator->factorial(5) . PHP_EOL;
+    echo 'Instance Power: ' . $calculator->power(2, 4) . PHP_EOL;     // 16
+    echo 'Instance Avg: ' . $calculator->average(10, 20, 30) . PHP_EOL; // 20
+    echo 'Instance Fact: ' . $calculator->factorial(5) . PHP_EOL;       // 120
+
+    echo 'Static Power: ' . Calculator::power(3, 3) . PHP_EOL;         // 27
+    echo 'Static Avg: ' . Calculator::average(1, 2, 3) . PHP_EOL;       // 2
 
 } catch (BadMethodCallException | InvalidArgumentException $e) {
+
     echo 'Error: ' . $e->getMessage() . PHP_EOL;
+
 }
