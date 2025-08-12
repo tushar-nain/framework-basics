@@ -182,4 +182,4 @@ php -a
 
 ## 📎 License
 
-MIT - use freely, improve responsibly.
+MIT - use freely, improve responsibly!
